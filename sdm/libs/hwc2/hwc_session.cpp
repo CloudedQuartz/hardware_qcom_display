@@ -372,7 +372,7 @@ void HWCSession::GetCapabilities(struct hwc2_device *device, uint32_t *outCount,
   if (Debug::Get()->GetProperty(DISABLE_SKIP_VALIDATE_PROP, &value) == kErrorNone) {
     disable_skip_validate = (value == 1);
   }
-  uint32_t count = 1 + (disable_skip_validate ? 0 : 1);
+  uint32_t count = 2 + (disable_skip_validate ? 0 : 1);
 
   if (outCapabilities != nullptr && (*outCount >= count)) {
     outCapabilities[0] = HWC2_CAPABILITY_SKIP_CLIENT_COLOR_TRANSFORM;
@@ -997,14 +997,9 @@ int32_t HWCSession::GetDisplayCapabilities(hwc2_device_t* device, hwc2_display_t
     return INT32(HWC2::Error::None);
   }
 
-  bool brightness_support = false;
-  auto status = GetDisplayBrightnessSupport(device, display, &brightness_support);
-  if (status != HWC2_ERROR_NONE) {
-    DLOGE("Failed to get display brightness support Error = %d", status);
-    return INT32(status);
-  }
+  bool brightness_support = display == HWC_DISPLAY_PRIMARY;
   int doze_support = 0;
-  status = GetDozeSupport(device, display, &doze_support);
+  auto status = GetDozeSupport(device, display, &doze_support);
   if (status != HWC2_ERROR_NONE) {
     DLOGE("Failed to get doze support Error = %d", status);
     return INT32(status);
@@ -1028,19 +1023,13 @@ int32_t HWCSession::GetDisplayCapabilities(hwc2_device_t* device, hwc2_display_t
 
 int32_t HWCSession::GetDisplayBrightnessSupport(hwc2_device_t *device, hwc2_display_t display,
                                                 bool *out_support) {
-  HWCSession *hwc_session = static_cast<HWCSession *>(device);
-  *out_support = display == HWC_DISPLAY_PRIMARY && hwc_session->brightness_fd_ != -1;
+  *out_support = display == HWC_DISPLAY_PRIMARY;
   return INT32(HWC2::Error::None);
 }
 
 int32_t HWCSession::SetDisplayBrightness(hwc2_device_t *device, hwc2_display_t display,
                                          float brightness) {
-  bool brightness_support = false;
-  auto status = GetDisplayBrightnessSupport(device, display, &brightness_support);
-  if (status != HWC2_ERROR_NONE) {
-    return INT32(status);
-  }
-  if (!brightness_support) {
+  if (display != HWC_DISPLAY_PRIMARY) {
     return INT32(HWC2::Error::BadDisplay);
   }
   int backlight = -1;
